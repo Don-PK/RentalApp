@@ -6,6 +6,10 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
+# allow per-package lockfiles
+!backend/pnpm-lock.yaml
+!frontend/pnpm-lock.yaml
+
 # Python
 __pycache__/
 *.py[cod]
