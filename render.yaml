@@ -20,6 +20,24 @@ services:
     branch: main
     rootDir: backend
 
+  - type: web
+    name: rental-mcp
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: pnpm install
+    startCommand: node src/mcp/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: rental-db
+      - key: MCP_API_KEY
+        sync: false
+    repo: .
+    branch: main
+    rootDir: backend
+
 databases:
   - name: rental-db
     engine: postgres
