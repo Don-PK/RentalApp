@@ -1,0 +1,28 @@
+import { useEffect, useState } from "react";
+import api from "../api/axios";
+import AdminLayout from "../components/AdminLayout";
+
+export default function Tenants() {
+  const [units, setUnits] = useState([]);
+  const [tenants, setTenants] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [form, setForm] = useState({ fullName: "", phone: "", nationalId: "", occupants: "1", unitId: "", startDate: new Date().toISOString().slice(0, 10), rent: "", initialWaterReading: "", paymentReference: "", paymentAmount: "", paymentMethod: "MPESA", paymentDate: new Date().toISOString().slice(0, 10), wallPaintStatus: "PAINTED", toiletLocksCondition: "GOOD", doorsCondition: "GOOD", sinkCondition: "GOOD", socketsCondition: "GOOD", lightingCondition: "GOOD", tokenStatus: "PROVIDED" });
+  useEffect(() => { fetchAll(); }, []);
+  async function fetchAll() { const [u, t] = await Promise.all([api.get('/units'), api.get('/tenants')]); setUnits((u.data || []).filter(x => x.status === 'VACANT')); setTenants(t.data || []); }
+  function change(e) { const { name, value } = e.target; setForm(p => { const n = { ...p, [name]: value }; if (name === 'unitId') { const unit = units.find(u => u.id === value); if (unit) { n.rent = unit.rent || ''; n.paymentAmount = unit.rent ? String(Number(unit.rent) * 2) : ''; } } if (name === 'rent') n.paymentAmount = String(Number(value || 0) * 2); return n; }); }
+  async function submit(e) { e.preventDefault(); setError(''); setSuccess(''); try { await api.post('/tenants', { ...form, occupants: Number(form.occupants), rent: Number(form.rent), initialWaterReading: Number(form.initialWaterReading || 0), paymentAmount: form.paymentAmount ? Number(form.paymentAmount) : undefined }); setSuccess('Tenant created and checked in.'); setShowForm(false); await fetchAll(); } catch (err) { setError(err.response?.data?.message || 'Failed to create tenant'); } }
+  const input = { width: '100%', padding: 10, border: '1px solid #ddd', borderRadius: 6, marginBottom: 10, boxSizing: 'border-box' };
+  return <AdminLayout><div style={{ padding: 24 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}><h2>Tenants</h2><button onClick={() => setShowForm(!showForm)} style={{ padding: '10px 18px', background: showForm ? '#dc3545' : '#007bff', color: 'white', border: 0, borderRadius: 6 }}>{showForm ? 'Cancel' : 'Create Tenant'}</button></div>
+    {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 12 }}>{error}</div>}{success && <div style={{ background: '#dcfce7', color: '#166534', padding: 12, borderRadius: 8, marginBottom: 12 }}>{success}</div>}
+    {showForm && <form onSubmit={submit} style={{ background: 'white', padding: 18, border: '1px solid #ddd', borderRadius: 8, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}><input name="fullName" placeholder="Tenant name" value={form.fullName} onChange={change} style={input} required /><input name="phone" placeholder="Phone" value={form.phone} onChange={change} style={input} required /><input name="nationalId" placeholder="National ID" value={form.nationalId} onChange={change} style={input} required /></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}><input name="occupants" type="number" value={form.occupants} onChange={change} style={input} /><select name="unitId" value={form.unitId} onChange={change} style={input} required><option value="">Select vacant unit</option>{units.map(u => <option key={u.id} value={u.id}>{u.property?.name} - {u.unitCode} - KES {u.rent}</option>)}</select><input name="rent" type="number" placeholder="Rent" value={form.rent} onChange={change} style={input} required /><input name="initialWaterReading" type="number" placeholder="Initial water reading" value={form.initialWaterReading} onChange={change} style={input} /></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}><input name="paymentReference" placeholder="Transaction ID" value={form.paymentReference} onChange={change} style={input} /><input name="paymentAmount" type="number" placeholder="Amount paid" value={form.paymentAmount} onChange={change} style={input} /><input name="paymentDate" type="date" value={form.paymentDate} onChange={change} style={input} /><select name="paymentMethod" value={form.paymentMethod} onChange={change} style={input}><option>MPESA</option><option>BANK</option><option>CASH</option></select></div>
+      <button style={{ padding: '10px 18px', border: 0, borderRadius: 6, background: '#28a745', color: 'white' }}>Create and Check In</button>
+    </form>}
+    <div style={{ overflowX: 'auto', background: 'white', border: '1px solid #ddd', borderRadius: 8 }}><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr>{['Name','Phone','Unit','Property','Balance'].map(h => <th key={h} style={{ textAlign: 'left', padding: 12, background: '#f8fafc' }}>{h}</th>)}</tr></thead><tbody>{tenants.map(t => <tr key={t.id}><td style={{ padding: 12 }}>{t.fullName}</td><td style={{ padding: 12 }}>{t.phone}</td><td style={{ padding: 12 }}>{t.unit?.unitCode}</td><td style={{ padding: 12 }}>{t.unit?.property?.name}</td><td style={{ padding: 12 }}>{t.arrears?.balance > 0 ? `Arrears KES ${t.arrears.balance}` : t.arrears?.balance < 0 ? `Advance KES ${Math.abs(t.arrears.balance)}` : 'Cleared'}</td></tr>)}</tbody></table></div>
+  </div></AdminLayout>;
+}

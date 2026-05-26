@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#00b4d8" />
+      <stop offset="1" stop-color="#065f46" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" fill="url(#g)" />
+  <g fill="#ffffff" opacity="0.95">
+    <g transform="translate(80,40)">
+      <rect x="0" y="40" width="160" height="220" rx="8" />
+      <rect x="190" y="0" width="220" height="260" rx="8" />
+      <rect x="430" y="30" width="160" height="230" rx="8" />
+      <rect x="610" y="10" width="200" height="250" rx="8" />
+    </g>
+    <text x="880" y="180" font-family="Segoe UI, Arial" font-size="44" font-weight="700">Rental Management</text>
+    <text x="880" y="220" font-family="Segoe UI, Arial" font-size="20">Tenants • Payments • Units • Utilities</text>
+  </g>
+</svg>

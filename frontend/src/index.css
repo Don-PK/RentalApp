@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&family=Playfair+Display:wght@700;900&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --kodi-navy: #0f1923;
+  --kodi-blue: #00b4d8;
+  --kodi-pink: #f72585;
+  --kodi-green: #06d6a0;
+  --kodi-yellow: #ffd166;
+  --kodi-bg: #f0f4f8;
+  --kodi-card: #ffffff;
+  --kodi-border: #e2e8f0;
+  --kodi-text: #1a2a3a;
+  --kodi-muted: #64748b;
+  --kodi-radius: 12px;
+  --kodi-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--kodi-bg);
+  color: var(--kodi-text);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+input,
+select,
+textarea {
+  font-family: 'DM Sans', sans-serif;
+}
+
+button {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.kodi-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--kodi-border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--kodi-text);
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+.kodi-input:focus {
+  border-color: var(--kodi-blue);
+  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.12);
+}
+
+.kodi-btn-primary {
+  padding: 10px 22px;
+  background: linear-gradient(135deg, var(--kodi-blue), #0096c7);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 180, 216, 0.3);
+}
+
+.kodi-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 180, 216, 0.4);
+}
+
+.kodi-card {
+  background: white;
+  border-radius: var(--kodi-radius);
+  box-shadow: var(--kodi-shadow);
+  border: 1px solid var(--kodi-border);
+}

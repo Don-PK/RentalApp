@@ -17,58 +17,219 @@ enum UnitStatus {
   MAINTENANCE
 }
 
+enum InvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  LATE
+}
+
+enum UnitCondition {
+  GOOD
+  WORKING
+  NOT_WORKING
+}
+
+enum UnitType {
+  THREE_BEDROOM
+  TWO_BEDROOM
+  ONE_BEDROOM
+  BEDSITTER
+  SINGLE_ROOM
+  SHOP
+  OFFICE
+}
+
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(AGENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String     @id @default(uuid())
+  name               String
+  email              String     @unique
+  password           String
+  phone              String?
+  role               Role       @default(AGENT)
+  mustChangePassword Boolean    @default(false)
+  agentLoginCode     String?
+  agentLoginCodeExpiresAt DateTime?
+  resetToken         String?
+  resetTokenExpiresAt DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  assignedProperties Property[]
+  createdProperties  Property[] @relation("CreatedAdminProperties")
+  createdAgents      User[]     @relation("CreatedAgents")
+  createdByAdminId   String?
+  createdByAdmin     User?      @relation("CreatedAgents", fields: [createdByAdminId], references: [id])
 }
 
 model Property {
-  id        String   @id @default(uuid())
-  name      String
-  location  String
-  createdAt DateTime @default(now())
+  id              String   @id @default(uuid())
+  name            String
+  location        String
+  type            String   // "house_rental" or "business_rental"
+  numberOfFloors  Int      // Total number of floors
+  unitsPerFloor   Int?     // Kept nullable for backward compat; per-unit config now preferred
+  agentId         String?
+  agent           User?    @relation(fields: [agentId], references: [id])
+  createdById     String?
+  createdBy       User?    @relation("CreatedAdminProperties", fields: [createdById], references: [id])
+  createdAt       DateTime @default(now())
 
-  units     Unit[]
+  units           Unit[]
 }
 
 model Unit {
-  id          String     @id @default(uuid())
-  number      String
-  type        String
-  rent        Float
-  status      UnitStatus @default(VACANT)
+  id                       String     @id @default(uuid())
+  unitCode                 String     // e.g., GF1, A1, B1, B2
+  floor                    Int        @default(0) // Floor index: 0 = ground floor
+  unitType                 UnitType?  // e.g., TWO_BEDROOM, SHOP, OFFICE
+  rent                     Float?
+  status                   UnitStatus @default(VACANT)
 
-  propertyId  String
-  property    Property   @relation(fields: [propertyId], references: [id])
+  // Utility condition tracking
+  toiletCondition          UnitCondition?
+  sinkCondition            UnitCondition?
+  doorsCondition           UnitCondition?
+  cabinetsCondition        UnitCondition?
+  electricalAppliancesCondition UnitCondition?
 
-  tenant      Tenant?
+  propertyId               String
+  property                 Property   @relation(fields: [propertyId], references: [id])
+
+  tenant                   Tenant?
+  leases                   Lease[]
+  waterReadings            WaterReading[]
+
+  @@unique([propertyId, unitCode])
 }
 
 model Tenant {
-  id          String   @id @default(uuid())
-  fullName    String
-  phone       String
-  nationalId  String
-  occupants   Int
+  id         String   @id @default(uuid())
+  fullName   String
+  phone      String
+  nationalId String
+  occupants  Int
 
-  unitId      String   @unique
-  unit        Unit     @relation(fields: [unitId], references: [id])
+  unitId     String   @unique
+  unit       Unit     @relation(fields: [unitId], references: [id])
+
+  leases     Lease[]
+  payments   Payment[]
+  paymentArchives PaymentArchive[]
+  arrears    Arrears?
+
+  createdAt  DateTime @default(now())
+}
+
+model Lease {
+  id         String   @id @default(uuid())
+  startDate  DateTime
+  endDate    DateTime?
+  rentAmount Float
+  deposit    Float
+
+  isActive   Boolean  @default(true)
+  checkInWallPaintStatus       String?
+  checkInToiletLocksCondition  String?
+  checkInDoorsCondition        String?
+  checkInSinkCondition         String?
+  checkInSocketsCondition      String?
+  checkInLightingCondition     String?
+  checkInTokenStatus           String?
+  initialWaterReading          Float?
+  checkoutWallPaintStatus      String?
+  checkoutToiletLocksCondition String?
+  checkoutDoorsCondition       String?
+  checkoutSinkCondition        String?
+  checkoutSocketsCondition     String?
+  checkoutLightingCondition    String?
+  checkoutTokenStatus          String?
+  checkoutWaterReading         Float?
+
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  unitId     String
+  unit       Unit     @relation(fields: [unitId], references: [id])
+
+  invoices   RentInvoice[]
+
+  createdAt  DateTime @default(now())
+}
+
+model RentInvoice {
+  id          String        @id @default(uuid())
+  year        Int
+  month       Int
+  baseRent    Float         // The rent portion
+  waterBill   Float         @default(0) // The water portion
+  amountDue   Float         // baseRent + waterBill (+ maybe arrears?)
+  amountPaid  Float         @default(0)
+  status      InvoiceStatus @default(PENDING)
+  dueDate     DateTime
+  createdAt   DateTime      @default(now())
+
+  leaseId     String
+  lease       Lease         @relation(fields: [leaseId], references: [id])
 
   payments    Payment[]
+  paymentArchives PaymentArchive[]
+
+  @@unique([leaseId, year, month])
 }
 
 model Payment {
   id          String   @id @default(uuid())
   amount      Float
   reference   String   @unique
-  method      String
+  method      String   // MPESA or BANK
+  paymentDate DateTime @default(now())
   createdAt   DateTime @default(now())
 
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  invoiceId   String
+  invoice     RentInvoice @relation(fields: [invoiceId], references: [id])
 }
+
+// Archived payments kept for historical/audit purposes when tenants are checked out
+model PaymentArchive {
+  id          String   @id @default(uuid())
+  amount      Float
+  reference   String
+  method      String
+  paymentDate DateTime
+  createdAt   DateTime @default(now())
+
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+
+  invoiceId   String?
+  invoice     RentInvoice? @relation(fields: [invoiceId], references: [id])
+}
+
+model WaterReading {
+  id        String   @id @default(uuid())
+  reading   Float    // Total units on the meter
+  month     Int
+  year      Int
+  unitId    String
+  unit      Unit     @relation(fields: [unitId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([unitId, year, month])
+}
+
+model Arrears {
+  id        String   @id @default(uuid())
+  tenantId  String   @unique
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  balance   Float    @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+
+
+
+
