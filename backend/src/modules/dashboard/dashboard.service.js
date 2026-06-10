@@ -68,8 +68,6 @@ export async function getPropertyPerformance(scope = {}) {
 }
 
 export async function getMonthlyIncome(year, scope = {}) {
-  // Aggregate by invoice dates (dueDate) so the dashboard reflects invoice timing
-  // rather than payment createdAt timestamps.
   const invoices = await prisma.rentInvoice.findMany({
     where: {
       dueDate: { gte: new Date(`${year}-01-01`), lt: new Date(`${year + 1}-01-01`) },
@@ -86,6 +84,68 @@ export async function getMonthlyIncome(year, scope = {}) {
     monthlyTotals[m].total += inv.amountDue || 0;
   }
   return monthlyTotals;
+}
+
+/**
+ * Returns monthly income broken down per property.
+ * Result shape: { data: [{month, "Prop A": 0, "Prop B": 0}, ...], propertyNames: ["Prop A","Prop B"] }
+ */
+export async function getMonthlyIncomeByProperty(year, scope = {}) {
+  const properties = await prisma.property.findMany({
+    where: propertyScope(scope),
+    select: { id: true, name: true },
+  });
+
+  if (properties.length === 0) return { data: [], propertyNames: [] };
+
+  const propertyNames = properties.map((p) => p.name);
+
+  const monthlyData = Array.from({ length: 12 }, (_, i) => {
+    const row = { month: i + 1 };
+    propertyNames.forEach((name) => { row[name] = 0; });
+    return row;
+  });
+
+  for (const prop of properties) {
+    const invoices = await prisma.rentInvoice.findMany({
+      where: {
+        dueDate: { gte: new Date(`${year}-01-01`), lt: new Date(`${year + 1}-01-01`) },
+        lease: { unit: { propertyId: prop.id } },
+      },
+      select: { amountDue: true, dueDate: true },
+    });
+    for (const inv of invoices) {
+      const m = new Date(inv.dueDate).getMonth();
+      monthlyData[m][prop.name] += inv.amountDue || 0;
+    }
+  }
+
+  return { data: monthlyData, propertyNames };
+}
+
+/**
+ * Returns outstanding, collected, and overdue counts per property.
+ */
+export async function getPropertyFinancials(scope = {}) {
+  const properties = await prisma.property.findMany({
+    where: propertyScope(scope),
+    select: { id: true, name: true },
+  });
+
+  const result = [];
+  for (const prop of properties) {
+    const invoices = await prisma.rentInvoice.findMany({
+      where: { lease: { unit: { propertyId: prop.id } } },
+      select: { amountDue: true, amountPaid: true, status: true },
+    });
+    const outstanding = invoices
+      .filter((i) => i.status !== "PAID")
+      .reduce((s, i) => s + Math.max(0, (i.amountDue || 0) - (i.amountPaid || 0)), 0);
+    const collected = invoices.reduce((s, i) => s + (i.amountPaid || 0), 0);
+    const overdue = invoices.filter((i) => i.status === "LATE" || i.status === "PARTIAL").length;
+    result.push({ propertyId: prop.id, propertyName: prop.name, outstanding, collected, overdue });
+  }
+  return result;
 }
 
 export async function getDebtors({ propertyId, agentId, createdById } = {}) {
@@ -106,7 +166,6 @@ export async function getDebtors({ propertyId, agentId, createdById } = {}) {
     }
   });
 
-  // fetch payments for these tenants in one batch to avoid N+1 queries
   const tenantIds = tenants.map(t => t.id);
   const payments = tenantIds.length ? await prisma.payment.findMany({
     where: { tenantId: { in: tenantIds } },
@@ -127,7 +186,6 @@ export async function getDebtors({ propertyId, agentId, createdById } = {}) {
       return sum + leaseOutstanding;
     }, 0);
 
-    // derive lastUpdated from latest payment date if present, otherwise arrears updatedAt
     const latestPayment = latestPaymentByTenant[tenant.id] || null;
 
     return {
@@ -146,11 +204,34 @@ export async function getDebtors({ propertyId, agentId, createdById } = {}) {
 }
 
 export async function getDashboardSummary(year, scope = {}) {
-  const totalRevenue = await getTotalRevenue(scope);
-  const outstandingBalance = await getOutstandingBalance(scope);
-  const occupancy = await getOccupancyRate(scope);
-  const propertyPerformance = await getPropertyPerformance(scope);
-  const monthlyIncome = await getMonthlyIncome(year, scope);
-  const debtors = await getDebtors(scope);
-  return { totalRevenue, outstandingBalance, occupancy, propertyPerformance, monthlyIncome, debtors };
+  const [
+    totalRevenue,
+    outstandingBalance,
+    occupancy,
+    propertyPerformance,
+    monthlyIncome,
+    monthlyIncomeByProperty,
+    propertyFinancials,
+    debtors,
+  ] = await Promise.all([
+    getTotalRevenue(scope),
+    getOutstandingBalance(scope),
+    getOccupancyRate(scope),
+    getPropertyPerformance(scope),
+    getMonthlyIncome(year, scope),
+    getMonthlyIncomeByProperty(year, scope),
+    getPropertyFinancials(scope),
+    getDebtors(scope),
+  ]);
+
+  return {
+    totalRevenue,
+    outstandingBalance,
+    occupancy,
+    propertyPerformance,
+    monthlyIncome,
+    monthlyIncomeByProperty,
+    propertyFinancials,
+    debtors,
+  };
 }

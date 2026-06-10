@@ -12,7 +12,8 @@ export function requireAuth(req, res, next) {
   try {
     req.user = verifyToken(token);
     next();
-  } catch {
-    return res.status(401).json({ message: 'Invalid token' });
+  } catch (err) {
+    console.error('Auth error:', err.message, 'Token:', token);
+    return res.status(401).json({ message: 'Invalid token: ' + err.message });
   }
 }

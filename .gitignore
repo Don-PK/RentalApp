@@ -59,10 +59,12 @@ venv.bak/
 Thumbs.db
 .DS_Store
 
-# Environment Variables
+# Environment Variables (local, Docker Compose, backend, frontend)
 .env
 .env.local
 .env.*.local
+!.env.example
+!**/.env.example
 
 # Build Output
 dist/

@@ -43,21 +43,18 @@ export default function Login() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: `linear-gradient(135deg, ${C.navy} 0%, #0a1e2e 60%, #0f1923 100%)` }}>
-      <div style={{ width: "100%", maxHeight: 200, overflow: "hidden" }}>
-        <img src="/cover.svg" alt="Rental Management" style={{ width: "100%", display: "block", objectFit: "cover", height: 200 }} />
-      </div>
-      <div style={{ display: "flex", flex: 1 }}>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 80px" }}>
-        <div style={{ width: 64, height: 64, borderRadius: 16, background: `linear-gradient(135deg, ${C.blue}, ${C.pink})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, fontWeight: 900, color: "white", marginBottom: 24 }}>K</div>
-        <h1 style={{ margin: 0, fontSize: 56, fontWeight: 900, color: "white", fontFamily: "Georgia, serif" }}>KODI</h1>
-        <p style={{ margin: "8px 0 0", fontSize: 20, color: "#7fb3c8" }}>Property Management</p>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, background: `linear-gradient(135deg, ${C.navy} 0%, #0a1e2e 60%, #0f1923 100%)` }}>
+      
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 48, textAlign: "center" }}>
+        <div style={{ width: 88, height: 88, borderRadius: 24, background: `linear-gradient(135deg, ${C.blue}, ${C.pink})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, fontWeight: 900, color: "white", marginBottom: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.4)" }}>K</div>
+        <h1 style={{ margin: 0, fontSize: 80, fontWeight: 900, color: "white", fontFamily: "Georgia, serif", letterSpacing: "2px", textShadow: "0 4px 16px rgba(0,0,0,0.5)" }}>KODI</h1>
+        <p style={{ margin: "12px 0 0", fontSize: 24, color: "#a8c8d8", fontWeight: 500, letterSpacing: "1px" }}>Property Management</p>
       </div>
 
-      <div style={{ width: 460, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
-        <div style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, padding: 40, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
-          <h2 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 800, color: "white" }}>Welcome back</h2>
-          <p style={{ margin: "0 0 28px", fontSize: 14, color: "#7fb3c8" }}>Sign in to your KODI account</p>
+      <div style={{ width: "100%", maxWidth: 460 }}>
+        <div style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 24, padding: "40px 48px", width: "100%", boxShadow: "0 24px 64px rgba(0,0,0,0.5)", boxSizing: "border-box" }}>
+          <h2 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 800, color: "white", textAlign: "center" }}>Welcome back</h2>
+          <p style={{ margin: "0 0 32px", fontSize: 15, color: "#7fb3c8", textAlign: "center" }}>Sign in to your account</p>
 
           <form onSubmit={handleSubmit}>
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600, color: "#a8c8d8" }}>Email Address</label>
@@ -81,7 +78,6 @@ export default function Login() {
             <Link to="/forgot-password" style={{ color: "#a8c8d8", textDecoration: "none" }}>Forgot password?</Link>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );

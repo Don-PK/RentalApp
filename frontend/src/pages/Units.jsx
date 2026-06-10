@@ -76,22 +76,36 @@ export default function Units() {
     <h2 style={{ marginTop: 0, color: C.navy }}>Units</h2>
     {error && <div style={{ background: "#fee2e2", color: "#991b1b", padding: 12, borderRadius: 8, marginBottom: 14 }}>{error}</div>}
     {success && <div style={{ background: "#dcfce7", color: "#166534", padding: 12, borderRadius: 8, marginBottom: 14 }}>{success}</div>}
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-      {units.map((u) => <div key={u.id} style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}><strong>Unit {u.unitCode}</strong><span>{u.status}</span></div>
-        <p style={{ margin: "6px 0", color: "#64748b" }}>{u.property?.name} | {u.unitType?.replaceAll("_", " ")}</p>
-        <p style={{ margin: "6px 0" }}>Rent: KES {Number(u.rent || 0).toLocaleString()}</p>
-        {u.tenant && <p style={{ margin: "6px 0" }}>Tenant: {u.tenant.fullName} ({u.tenant.phone})</p>}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-          {u.status === "VACANT" && <button onClick={() => open(u, "checkin")} style={{ ...btn, background: C.blue, color: "white" }}>Check in</button>}
-          {u.status === "OCCUPIED" && <button onClick={() => open(u, "water")} style={{ ...btn, background: C.green, color: "white" }}>Water reading</button>}
-          {u.status === "OCCUPIED" && <button onClick={() => open(u, "checkout")} style={{ ...btn, background: C.pink, color: "white" }}>Check out</button>}
-          {user?.role === "ADMIN" && (
-            <button onClick={() => open(u, "edit")} style={{ ...btn, background: "#64748b", color: "white" }}>Edit Unit</button>
-          )}
+    {Object.entries(
+      units.reduce((acc, u) => {
+        const pName = u.property?.name || "Unassigned";
+        if (!acc[pName]) acc[pName] = [];
+        acc[pName].push(u);
+        return acc;
+      }, {})
+    ).map(([propertyName, propertyUnits]) => (
+      <div key={propertyName} style={{ marginBottom: 32 }}>
+        <h3 style={{ marginTop: 0, marginBottom: 16, color: "#475569", borderBottom: "2px solid #e2e8f0", paddingBottom: 8 }}>
+          🏢 {propertyName}
+        </h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+          {propertyUnits.map((u) => <div key={u.id} style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><strong>Unit {u.unitCode}</strong><span>{u.status}</span></div>
+            <p style={{ margin: "6px 0", color: "#64748b" }}>{u.unitType?.replaceAll("_", " ")}</p>
+            <p style={{ margin: "6px 0" }}>Rent: KES {Number(u.rent || 0).toLocaleString()}</p>
+            {u.tenant && <p style={{ margin: "6px 0" }}>Tenant: {u.tenant.fullName} ({u.tenant.phone})</p>}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+              {u.status === "VACANT" && <button onClick={() => open(u, "checkin")} style={{ ...btn, background: C.blue, color: "white" }}>Check in</button>}
+              {u.status === "OCCUPIED" && <button onClick={() => open(u, "water")} style={{ ...btn, background: C.green, color: "white" }}>Water reading</button>}
+              {u.status === "OCCUPIED" && <button onClick={() => open(u, "checkout")} style={{ ...btn, background: C.pink, color: "white" }}>Check out</button>}
+              {user?.role === "ADMIN" && (
+                <button onClick={() => open(u, "edit")} style={{ ...btn, background: "#64748b", color: "white" }}>Edit Unit</button>
+              )}
+            </div>
+          </div>)}
         </div>
-      </div>)}
-    </div>
+      </div>
+    ))}
 
     {mode && selectedUnit && <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "grid", placeItems: "center", zIndex: 20 }} onClick={close}>
       <form onSubmit={mode === "checkin" ? submitCheckIn : mode === "water" ? submitWater : submitCheckout} onClick={(e) => e.stopPropagation()} style={{ background: "white", borderRadius: 14, padding: 24, width: "min(720px, 92vw)", maxHeight: "90vh", overflow: "auto" }}>
