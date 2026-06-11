@@ -22,15 +22,20 @@ RUN pnpm build
 # ---- Production Stage ----
 FROM nginx:1.27-alpine AS runner
 
+# Install gettext for envsubst
+RUN apk add --no-cache gettext
+
 # Remove default Nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy custom Nginx config
-COPY nginx.conf /etc/nginx/conf.d/app.conf
+# Copy custom Nginx config template
+COPY nginx.conf /etc/nginx/conf.d/app.conf.template
 
 # Copy built React app
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Set default backend URL and start nginx with environment substitution
+ENV BACKEND_URL=http://backend:5000/
+CMD ["sh", "-c", "envsubst '$$BACKEND_URL' < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/app.conf && nginx -g 'daemon off;'"]
