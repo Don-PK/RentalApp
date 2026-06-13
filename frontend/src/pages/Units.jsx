@@ -24,6 +24,7 @@ export default function Units() {
   const [checkForm, setCheckForm] = useState(emptyCheck);
   const [waterForm, setWaterForm] = useState(emptyWater);
   const [checkoutForm, setCheckoutForm] = useState(emptyCheckout);
+  const [checkoutStatus, setCheckoutStatus] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,13 +34,50 @@ export default function Units() {
     const res = await api.get("/units");
     setUnits(res.data || []);
   }
-  function open(unit, nextMode) {
-    setSelectedUnit(unit); setMode(nextMode); setError(""); setSuccess("");
-    if (nextMode === "checkin") setCheckForm({ ...emptyCheck, rent: unit.rent || "", paymentAmount: unit.rent ? String(Number(unit.rent) * 2) : "" });
-    if (nextMode === "water") setWaterForm(emptyWater);
-    if (nextMode === "checkout") setCheckoutForm({ ...emptyCheckout, checkoutWaterReading: unit.waterReadings?.[0]?.reading || "" });
+
+  async function open(unit, nextMode) {
+    setSelectedUnit(unit);
+    setMode(nextMode);
+    setError("");
+    setSuccess("");
+    setCheckoutStatus(null);
+
+    if (nextMode === "checkin") {
+      // Pre-populate initial water reading from last reading on unit (from previous checkout)
+      const lastWaterReading = unit.waterReadings?.[0]?.reading || "";
+      setCheckForm({
+        ...emptyCheck,
+        rent: unit.rent || "",
+        paymentAmount: unit.rent ? String(Number(unit.rent) * 2) : "",
+        initialWaterReading: lastWaterReading ? String(lastWaterReading) : "",
+      });
+    }
+    if (nextMode === "water") {
+      setWaterForm(emptyWater);
+    }
+    if (nextMode === "checkout") {
+      // Fetch checkout status to show invoice info
+      try {
+        const leaseId = unit.leases?.[0]?.id;
+        if (leaseId) {
+          const res = await api.get(`/leases/${leaseId}/checkout-status`);
+          setCheckoutStatus(res.data);
+          if (!res.data.canCheckout) {
+            setError(`Cannot checkout: ${res.data.unpaidInvoices.length} invoice(s) unpaid. Paid ${res.data.paidInvoiceCount}/${res.data.invoiceCount} invoices.`);
+          }
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to check invoice status");
+      }
+      setCheckoutForm({ ...emptyCheckout, checkoutWaterReading: unit.waterReadings?.[0]?.reading || "" });
+    }
   }
-  function close() { setSelectedUnit(null); setMode(""); }
+
+  function close() {
+    setSelectedUnit(null);
+    setMode("");
+    setCheckoutStatus(null);
+  }
 
   async function submitCheckIn(e) {
     e.preventDefault(); setLoading(true); setError(""); setSuccess("");
@@ -110,7 +148,9 @@ export default function Units() {
     {mode && selectedUnit && <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "grid", placeItems: "center", zIndex: 20 }} onClick={close}>
       <form onSubmit={mode === "checkin" ? submitCheckIn : mode === "water" ? submitWater : submitCheckout} onClick={(e) => e.stopPropagation()} style={{ background: "white", borderRadius: 14, padding: 24, width: "min(720px, 92vw)", maxHeight: "90vh", overflow: "auto" }}>
         <h3 style={{ marginTop: 0 }}>{modalTitle} - Unit {selectedUnit.unitCode}</h3>
+        {error && <div style={{ background: "#fee2e2", color: "#991b1b", padding: 12, borderRadius: 8, marginBottom: 14, fontSize: 13 }}>⚠️ {error}</div>}
         {mode === "checkin" && <>
+          {selectedUnit.waterReadings?.[0] && <div style={{ background: "#ecf0ff", border: "1px solid #c7d2fe", padding: 10, borderRadius: 8, marginBottom: 14, fontSize: 13, color: "#3730a3" }}>ℹ️ Initial water reading pre-filled from previous tenant checkout: <strong>{selectedUnit.waterReadings[0].reading} units</strong></div>}
           <input style={input} placeholder="Tenant name" value={checkForm.fullName} onChange={(e) => setCheckForm({ ...checkForm, fullName: e.target.value })} required />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}><input style={input} placeholder="Phone" value={checkForm.phone} onChange={(e) => setCheckForm({ ...checkForm, phone: e.target.value })} required /><input style={input} placeholder="National ID" value={checkForm.nationalId} onChange={(e) => setCheckForm({ ...checkForm, nationalId: e.target.value })} required /></div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}><input style={input} type="number" placeholder="Occupants" value={checkForm.occupants} onChange={(e) => setCheckForm({ ...checkForm, occupants: e.target.value })} required /><input style={input} type="date" value={checkForm.startDate} onChange={(e) => setCheckForm({ ...checkForm, startDate: e.target.value })} /><input style={input} type="number" placeholder="Rent" value={checkForm.rent} onChange={(e) => setCheckForm({ ...checkForm, rent: e.target.value, paymentAmount: String(Number(e.target.value || 0) * 2) })} required /><input style={input} type="number" placeholder="Initial water" value={checkForm.initialWaterReading} onChange={(e) => setCheckForm({ ...checkForm, initialWaterReading: e.target.value })} /></div>
@@ -119,8 +159,22 @@ export default function Units() {
         </>}
         {mode === "water" && <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}><input style={input} type="number" step="0.01" placeholder="Current reading" value={waterForm.reading} onChange={(e) => setWaterForm({ ...waterForm, reading: e.target.value })} required /><input style={input} type="number" value={waterForm.month} onChange={(e) => setWaterForm({ ...waterForm, month: e.target.value })} /><input style={input} type="number" value={waterForm.year} onChange={(e) => setWaterForm({ ...waterForm, year: e.target.value })} /><input style={input} type="number" value={waterForm.waterRatePerUnit} onChange={(e) => setWaterForm({ ...waterForm, waterRatePerUnit: e.target.value })} /></div>}
         {mode === "edit" && user?.role === "ADMIN" && <EditUnit unit={selectedUnit} onChange={(u)=>{setSelectedUnit(u); fetchUnits();}} onClose={close} />}
-        {mode === "checkout" && <><input style={input} type="date" value={checkoutForm.endDate} onChange={(e) => setCheckoutForm({ ...checkoutForm, endDate: e.target.value })} /><input style={input} type="number" placeholder="Final water reading" value={checkoutForm.checkoutWaterReading} onChange={(e) => setCheckoutForm({ ...checkoutForm, checkoutWaterReading: e.target.value })} /><Inspection form={checkoutForm} setForm={setCheckoutForm} prefix="checkout" /></>}
-        <div style={{ display: "flex", gap: 10, marginTop: 14 }}><button disabled={loading} style={{ ...btn, background: C.blue, color: "white" }}>{loading ? "Saving..." : "Save"}</button><button type="button" onClick={close} style={{ ...btn, background: "#e2e8f0" }}>Cancel</button></div>
+        {mode === "checkout" && <>
+          {checkoutStatus && (
+            <div style={{ background: checkoutStatus.canCheckout ? "#dcfce7" : "#fee2e2", border: `1px solid ${checkoutStatus.canCheckout ? "#86efac" : "#fca5a5"}`, padding: 12, borderRadius: 8, marginBottom: 14, fontSize: 13 }}>
+              {checkoutStatus.canCheckout ? (
+                <div style={{ color: "#166534" }}>✅ All invoices paid ({checkoutStatus.paidInvoiceCount}/{checkoutStatus.invoiceCount}). Ready for checkout.</div>
+              ) : (
+                <div style={{ color: "#991b1b" }}>❌ {checkoutStatus.unpaidInvoices.length} invoice(s) unpaid ({checkoutStatus.paidInvoiceCount}/{checkoutStatus.invoiceCount} paid)</div>
+              )}
+              {checkoutStatus.lastWaterReading && <div style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>Last water reading: {checkoutStatus.lastWaterReading.reading} units (Month {checkoutStatus.lastWaterReading.month}/{checkoutStatus.lastWaterReading.year})</div>}
+            </div>
+          )}
+          <input style={input} type="date" value={checkoutForm.endDate} onChange={(e) => setCheckoutForm({ ...checkoutForm, endDate: e.target.value })} />
+          <input style={input} type="number" placeholder="Final water reading" value={checkoutForm.checkoutWaterReading} onChange={(e) => setCheckoutForm({ ...checkoutForm, checkoutWaterReading: e.target.value })} />
+          <Inspection form={checkoutForm} setForm={setCheckoutForm} prefix="checkout" />
+        </>}
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}><button disabled={loading || (mode === "checkout" && checkoutStatus && !checkoutStatus.canCheckout)} style={{ ...btn, background: (mode === "checkout" && checkoutStatus && !checkoutStatus.canCheckout) ? "#cbd5e1" : C.blue, color: "white", cursor: (mode === "checkout" && checkoutStatus && !checkoutStatus.canCheckout) ? "not-allowed" : "pointer" }}>{loading ? "Saving..." : "Save"}</button><button type="button" onClick={close} style={{ ...btn, background: "#e2e8f0" }}>Cancel</button></div>
       </form>
     </div>}
   </div></AdminLayout>;

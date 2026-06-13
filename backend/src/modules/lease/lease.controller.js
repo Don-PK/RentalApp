@@ -1,4 +1,4 @@
-import { closeLease, createLease } from './lease.service.js';
+import { closeLease, createLease, getCheckoutStatus } from './lease.service.js';
 
 export async function create(req, res) {
   try {
@@ -9,9 +9,17 @@ export async function create(req, res) {
   } catch (err) { return res.status(400).json({ message: err.message }); }
 }
 
+export async function checkoutStatus(req, res) {
+  try {
+    const status = await getCheckoutStatus(req.params.id, req.user);
+    return res.json(status);
+  } catch (err) { return res.status(400).json({ message: err.message }); }
+}
+
 export async function close(req, res) {
   try {
     const lease = await closeLease(req.params.id, req.body, req.user);
     return res.json(lease);
   } catch (err) { return res.status(400).json({ message: err.message }); }
 }
+
